@@ -119,7 +119,7 @@ jobs:
       - run:
           name: Stamping commit with a git note
           command: |
-            git notes --ref ci add -f "auto-tests-pass"
+            git notes --ref ci add -f -m"auto-tests-pass"
             git push origin refs/notes/ci
             git push origin "refs/notes/*"
           when: on_success
