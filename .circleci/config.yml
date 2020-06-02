@@ -34,7 +34,7 @@ commands:
             git fetch --depth 1 origin << pipeline.parameters.collector-sha >>
             git checkout FETCH_HEAD
             git status
-            git log | HEAD
+            git log | head
 
   save_module_cache:
     steps:
