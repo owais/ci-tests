@@ -31,7 +31,7 @@ commands:
           command: |
             git clone --depth=1 git@github.com:open-telemetry/opentelemetry-collector-contrib.git collector
             cd collector
-            git fetch --depth 1 origin << pipeline.parameters.collector-commit-sha >>
+            git fetch --depth 1 origin << pipeline.parameters.collector-sha >>
             git checkout FETCH_HEAD
             git status
             git log | HEAD
