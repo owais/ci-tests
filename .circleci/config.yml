@@ -99,6 +99,11 @@ jobs:
     steps:
       - attach_to_workspace
       - run:
+          name: Run commands
+          command: |
+              echo "I will exit fail status"
+              exit 1
+      - run:
           name: Lint
           command: CMD="make lint" make -j4 for-all
       - run:
