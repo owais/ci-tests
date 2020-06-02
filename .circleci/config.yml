@@ -1,0 +1,112 @@
+version: 2.1
+
+executors:
+  golang:
+    docker:
+      - image: cimg/go:1.14
+
+commands:
+  attach_to_workspace:
+    steps:
+      - attach_workspace:
+          at: ~/
+
+  persist_workspace:
+    steps:
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - go/bin
+            - go/pkg/mod
+            - project
+
+  checkout_collector:
+    steps:
+      - run:
+          name: Checkout Collector
+          command: |
+            git clone --depth=1 git@github.com:open-telemetry/opentelemetry-collector-contrib.git collector
+            cd collector
+
+  save_module_cache:
+    steps:
+      - save_cache:
+          key: go-pkg-mod-{{ checksum "go.sum" }}
+          paths:
+            - "/home/circleci/go/pkg/mod"
+
+  restore_module_cache:
+    steps:
+      - run:
+          name: create modules dir
+          command: mkdir -p ~/go/pkg/mod
+      - restore_cache: # restores saved cache if no changes are detected since last run
+          keys:
+            - go-pkg-mod-{{ checksum "go.sum" }}
+
+workflows:
+  version: 2
+  build-test:
+    jobs:
+      - checkout_collector 
+      - deps:
+          requires:
+            - checkout_collector
+      - test:
+          requires:
+            - deps
+
+jobs:
+  checkout_collector:
+    executor: golang
+    steps:
+      - checkout
+      - checkout_collector
+      - persist_workspace
+
+  deps:
+    executor: golang
+    working_directory: ~/project/collector
+    steps:
+      - attach_to_workspace
+      - restore_module_cache
+      - run:
+          name: Get dependencies
+          command: go mod download
+      - run:
+          name: Install tools
+          command: make install-tools
+      - run:
+          name: Install testbed tools
+          command: make -C testbed install-tools
+      - save_module_cache
+      - persist_workspace
+
+  test:
+    executor: golang
+    working_directory: ~/project/collector
+    steps:
+      - attach_to_workspace
+      - run:
+          name: Lint
+          command: CMD="make lint" make -j4 for-all
+      - run:
+          name: Checks
+          command: make -j4 checklicense impi misspell
+      - run:
+          name: Run on fail status
+          command: |
+              curl --request POST \
+              --url https://api.github.com/repos/opentelemetry-collector-contrib/issues \
+              --header 'authorization: Bearer ${{ GITHUB_TOKEN }}' \
+              --header 'content-type: application/json' \
+              --data '{
+                "title": "[TEST ISSUE. IGNORE] Automated issue for commit: ${{ CIRCLE_BUILD_NUM }}",
+                "body": "## THIS IS A TEST. PLEASE IGNORE.\n\nThis issue was automatically created by a failed stability test: ${{ CIRCLE_BUILD_URL }}."
+                }'
+          when: on_fail
+      - run:
+          name: Run on pass status
+          command: |
+            echo "will push notes"
+          when: on_success
