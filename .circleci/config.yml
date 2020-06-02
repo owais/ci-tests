@@ -1,5 +1,8 @@
 version: 2.1
 parameters:
+  collector-repo:
+    type: string
+    default: ""
   collector-sha:
     type: string
     default: ""
@@ -29,7 +32,7 @@ commands:
       - run:
           name: Checkout Collector
           command: |
-            git clone --depth=1 git@github.com:open-telemetry/opentelemetry-collector-contrib.git collector
+            git clone --depth=1 << pipeline.parameters.collector-repo >> collector
             cd collector
             git fetch --depth 1 origin << pipeline.parameters.collector-sha >>
             git checkout FETCH_HEAD
