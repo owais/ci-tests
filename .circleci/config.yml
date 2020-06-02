@@ -32,7 +32,7 @@ commands:
       - run:
           name: Checkout Collector
           command: |
-            git clone --depth=1 << pipeline.parameters.collector-repo >> collector
+            git clone --depth=1 git@github.com:open-telemetry/<< pipeline.parameters.collector-repo >>.git collector
             cd collector
             git fetch --depth 1 origin << pipeline.parameters.collector-sha >>
             git checkout FETCH_HEAD
@@ -108,7 +108,7 @@ jobs:
           name: Run on fail status
           command: |
               curl --request POST \
-              --url https://api.github.com/repos/opentelemetry-collector-contrib/issues \
+              --url https://api.github.com/repos/<< pipeline.parameters.collector-repo >>/issues \
               --header 'authorization: Bearer ${{ GITHUB_TOKEN }}' \
               --header 'content-type: application/json' \
               --data '{
