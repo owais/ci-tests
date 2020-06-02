@@ -105,6 +105,7 @@ jobs:
                 "body": "## THIS IS A TEST. PLEASE IGNORE.\n\nThis issue was automatically created by a failed stability test: ${{ CIRCLE_BUILD_URL }}."
                 }'
           when: on_fail
+
       - run:
           name: Run on pass status
           command: |
