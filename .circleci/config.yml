@@ -1,4 +1,7 @@
 version: 2.1
+parameters:
+  collector_commit_sha:
+    type: string
 
 executors:
   golang:
@@ -27,6 +30,10 @@ commands:
           command: |
             git clone --depth=1 git@github.com:open-telemetry/opentelemetry-collector-contrib.git collector
             cd collector
+            git fetch --depth 1 origin << pipeline.parameters.collector_commit_sha >>
+            git checkout FETCH_HEAD
+            git status
+            git log | HEAD
 
   save_module_cache:
     steps:
