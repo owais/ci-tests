@@ -1,7 +1,8 @@
 version: 2.1
 parameters:
-  collector-commit-sha:
+  collector-sha:
     type: string
+    default: ""
 
 executors:
   golang:
