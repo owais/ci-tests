@@ -1,6 +1,6 @@
 version: 2.1
 parameters:
-  collector_commit_sha:
+  collector-commit-sha:
     type: string
 
 executors:
@@ -30,7 +30,7 @@ commands:
           command: |
             git clone --depth=1 git@github.com:open-telemetry/opentelemetry-collector-contrib.git collector
             cd collector
-            git fetch --depth 1 origin << pipeline.parameters.collector_commit_sha >>
+            git fetch --depth 1 origin << pipeline.parameters.collector-commit-sha >>
             git checkout FETCH_HEAD
             git status
             git log | HEAD
