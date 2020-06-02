@@ -55,10 +55,38 @@ commands:
           keys:
             - go-pkg-mod-{{ checksum "go.sum" }}
 
+  publish_docker_images:
+    parameters:
+      repo:
+        type: string
+      tag:
+        type: string
+    steps:
+      - run:
+          name: Build image
+          command: |
+            make docker-otelcontribcol
+            docker tag otelcontribcol:latest otel/<< parameters.repo >>:<< parameters.tag >>
+            docker tag otelcontribcol:latest otel/<< parameters.repo >>:latest
+      - run:
+          name: Login to Docker Hub
+          command: docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
+      - run:
+          name: Push image
+          command: |
+            docker push otel/<< parameters.repo >>:<< parameters.tag >>
+            docker push otel/<< parameters.repo >>:latest
+
 workflows:
   version: 2
   build:
     jobs:
+      - test-job:
+          filters:
+            branches:
+              only: /master|release/
+            tags:
+              ignore: /.*/
       - checkout_collector 
       - deps:
           requires:
@@ -66,6 +94,9 @@ workflows:
       - test:
           requires:
             - deps
+      - publish-image:
+          requires:
+            - test 
 
 jobs:
   checkout_collector:
@@ -74,6 +105,14 @@ jobs:
       - checkout
       - checkout_collector
       - persist_workspace
+
+  test-job:
+    executor: golang
+    working_directory: ~/project/collector
+    steps:
+      - run:
+          name: ECHO ECHO
+          command: echo "RUNNING TESTJOB"
 
   deps:
     executor: golang
@@ -88,8 +127,10 @@ jobs:
           name: Install tools
           command: make install-tools
       - run:
-          name: Install testbed tools
-          command: make -C testbed install-tools
+          name: check if files have changed
+          command: |
+            git status
+            git diff
       - save_module_cache
       - persist_workspace
 
@@ -98,11 +139,6 @@ jobs:
     working_directory: ~/project/collector
     steps:
       - attach_to_workspace
-      - run:
-          name: Run commands
-          command: |
-              echo "I will exit fail status"
-              exit 1
       - run:
           name: Lint
           command: CMD="make lint" make -j4 for-all
@@ -113,18 +149,28 @@ jobs:
           name: Run on fail status
           command: |
               curl --request POST \
-              --url https://api.github.com/repos/<< pipeline.parameters.collector-repo >>/issues \
-              --header 'authorization: Bearer ${{ GITHUB_TOKEN }}' \
-              --header 'content-type: application/json' \
+              --url https://api.github.com/repos/open-telemetry/<< pipeline.parameters.collector-repo >>/issues \
+              --header "authorization: Bearer ${GITHUB_TOKEN}" \
+              --header "content-type: application/json" \
               --data '{
-                "title": "[TEST ISSUE. IGNORE] Automated issue for commit: ${{ CIRCLE_BUILD_NUM }}",
-                "body": "## THIS IS A TEST. PLEASE IGNORE.\n\nThis issue was automatically created by a failed stability test: ${{ CIRCLE_BUILD_URL }}."
+                "title": "[TEST ISSUE. IGNORE] Automated issue for commit: '"${CIRCLE_BUILD_NUM}"'",
+                "body": "## THIS IS A TEST. PLEASE IGNORE.\n\nThis issue was automatically created by a failed stability test: '"${CIRCLE_BUILD_URL}"'."
                 }'
           when: on_fail
-      - run:
-          name: Stamping commit with a git note
-          command: |
-            git notes --ref ci add -f -m"auto-tests-pass"
-            git push origin refs/notes/ci
-            git push origin "refs/notes/*"
-          when: on_success
+      #- run:
+      #    name: Stamping commit with a git note
+      #    command: |
+      #      git notes --ref ci add -f -m"auto-tests-pass"
+      #      git push origin refs/notes/ci
+      #      git push origin "refs/notes/*"
+      #    when: on_success
+
+  publish-image:
+    executor: golang
+    working_directory: ~/project/collector
+    steps:
+      - attach_to_workspace
+      - setup_remote_docker
+      - publish_docker_images:
+          repo: << pipeline.parameters.collector-repo >>-dev
+          tag: << pipeline.parameters.collector-sha >>-verified
