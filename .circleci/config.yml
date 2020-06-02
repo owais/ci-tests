@@ -46,7 +46,7 @@ commands:
 
 workflows:
   version: 2
-  build-test:
+  build:
     jobs:
       - checkout_collector 
       - deps:
@@ -105,9 +105,10 @@ jobs:
                 "body": "## THIS IS A TEST. PLEASE IGNORE.\n\nThis issue was automatically created by a failed stability test: ${{ CIRCLE_BUILD_URL }}."
                 }'
           when: on_fail
-
       - run:
-          name: Run on pass status
+          name: Stamping commit with a git note
           command: |
-            echo "will push notes"
+            git notes --ref ci add -f "auto-tests-pass"
+            git push origin refs/notes/ci
+            git push origin "refs/notes/*"
           when: on_success
